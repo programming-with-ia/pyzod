@@ -1,9 +1,9 @@
 [project]
 name = "pyzod"                    # The name of your package.
-version = "0.0.2"                 # The current version of your package.
+version = "0.0.5"                 # The current version of your package.
 description = "pyzod"             # A brief description of your package.
 readme = "README.md"              # The file containing the README content.
-requires-python = ">=3.12"        # The minimum Python version required.
+requires-python = ">=3.11"        # The minimum Python version required.
 dependencies = []                 # No runtime dependencies.
 
 [dependency-groups]
