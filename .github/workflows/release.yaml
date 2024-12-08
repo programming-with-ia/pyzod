@@ -15,7 +15,6 @@ env:
 jobs:
   details:
     runs-on: ubuntu-latest
-    # needs: unit-test
     outputs:
       new_version: ${{ steps.release.outputs.new_version }}
       suffix: ${{ steps.release.outputs.suffix }}
@@ -142,33 +141,9 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ needs.details.outputs.tag_name }} dist/* --title ${{ needs.details.outputs.tag_name }} --generate-notes
-
-  bump_homebrew_formula:
-    name: Dispatch event to Repo B
-    needs: [details, github_release, pypi_publish]
-    runs-on: ubuntu-latest
-    environment:
-      name: release
-    steps:
-      - name: Dispatch Repository Dispatch event
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.BREW_TAP_TOKEN }}
-          repository: ArjanCodes/homebrew-core
-          event-type: "update-formula"
-          client-payload: |-
-            { 
-              "formula_version": "${{env.FORMULA_VERSION}}", 
-              "formula_url": "${{ env.FORMULA_URL }}", 
-              "formula_name": "${{ env.FORMULA_NAME }}"
-            }
-        env:
-          FORMULA_VERSION: ${{ needs.details.outputs.new_version }}
-          FORMULA_NAME: ${{ env.PACKAGE_NAME }}
-          FORMULA_URL: https://github.com/${{env.OWNER}}/${{env.PACKAGE_NAME}}/releases/download/${{ needs.details.outputs.new_version }}/${{env.PACKAGE_NAME}}-${{ needs.details.outputs.new_version }}.tar.gz
 
   bump_version:
     needs: [details, github_release, pypi_publish]
@@ -178,6 +153,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Fetch full history to avoid issues with tags and branches
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ env.OWNER }}/pyzod.git
 
       - name: Bump version
         run: |
