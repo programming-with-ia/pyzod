@@ -1,0 +1,15 @@
+[project]
+name = "pyzod"                    # The name of your package.
+version = "0.0.2"                 # The current version of your package.
+description = "pyzod"             # A brief description of your package.
+readme = "README.md"              # The file containing the README content.
+requires-python = ">=3.12"        # The minimum Python version required.
+dependencies = []                 # No runtime dependencies.
+
+[dependency-groups]
+dev = [                           # Development-only dependencies.
+    "pytest>=8.3.3"               # Used for running tests.
+]
+
+[project.scripts]
+pyzod = "pyzod.__main__:cli"      # Defines the command-line script `pyzod`.
