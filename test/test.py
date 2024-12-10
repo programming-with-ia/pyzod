@@ -1,11 +1,14 @@
-from custommodules.immiSimple import pyzod as z
+import test_init
+
+import pyzod as z
+
 schema = z.Dict(
     {
         "name": z.Str().required().min(2),
         "age": z.Int().required().minmax(18, 40),
         "password": z.Str().required().min(8),
         "id": z.Str().required().length(10),
-        "learn": z.List(z.Dict({"a": z.Str().required(), 'b': z.Int().required()})),
+        "learn": z.List(z.Dict({"a": z.Str().required(), "b": z.Int().required()})),
         "fixedList": z.List([z.Str(), z.Str(), z.Str()]),
         "fullName": z.Str().default(
             "this is fullName"
@@ -18,8 +21,12 @@ data = {
     "age": 18,
     "password": "amcoamcoamcoma",
     "id": "1234567890",
-    "learn": [{"a": "", 'b': 1}],
-    "fixedList": ["item1", "item2", "name",],
+    "learn": [{"a": "", "b": 1}],
+    "fixedList": [
+        "item1",
+        "item2",
+        "name",
+    ],
 }
 
 validated_data = schema.validate(data)

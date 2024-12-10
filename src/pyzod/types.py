@@ -1,6 +1,7 @@
 from .validators import *
 from .getters import Getter
 
+
 class Base:
     def __init__(self):
         self.type = None
@@ -12,6 +13,12 @@ class Base:
     def required(self):
         self._required = True
         return self
+
+    def isRequired(self):
+        return self._required
+
+    def getDefault(self):
+        return self._default
 
     def default(self, value):
         if isinstance(value, Getter):
@@ -25,7 +32,9 @@ class Base:
         if isinstance(value, Getter):
             value = value.get(self)
         if not isinstance(value, self.type):
-            raise ValueError(f"Error value must be of type {self.type} \nValue is: {value}")
+            raise ValueError(
+                f"Error value must be of type {self.type} \nValue is: {value}"
+            )
         self._onError = value
         return self
 
@@ -38,7 +47,7 @@ class Base:
 
             if not isinstance(value, self.type):
                 raise TypeError(
-                    f"Expected type {self.type.__name__}, got {type(value).__name__}"
+                    f"Expected type {self.type}, got {type(value).__name__}"
                 )
 
             for validator in self.validators:
@@ -54,6 +63,7 @@ class Base:
     def add_validator(self, validator):
         self.validators.append(validator)
         return self
+
 
 class List(Base):
     def __init__(self, schema):
@@ -83,8 +93,9 @@ class List(Base):
                 return self._onError
             raise e
 
+
 class Dict(Base):
-    def __init__(self, schema:dict):
+    def __init__(self, schema: dict):
         super().__init__()
         self.type = dict
         self.schema = schema
@@ -110,11 +121,11 @@ class Dict(Base):
             raise e
 
     def default(self, value: dict = None):
-        if value is None: # all fields must have ._default
+        if value is None:  # all fields must have ._default
             value = {}
             for key, val in self.schema.items():
                 value[key] = val._default
-            
+
             super().default(value)
             return self
 
@@ -123,6 +134,7 @@ class Dict(Base):
             if isinstance(val, Getter):
                 self._default[key] = val.get(self.schema[key])
         return self
+
 
 class Str(Base):
     def __init__(self):
@@ -140,6 +152,7 @@ class Str(Base):
     def length(self, length):
         self.add_validator(Length(length))
         return self
+
 
 class Number(Base):
     def __init__(self):
