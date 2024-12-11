@@ -73,6 +73,8 @@ class List(Base):
 
     def validate(self, value=None):
         value = super().validate(value)
+        if value is None:
+            return
 
         try:
             if isinstance(self.schema, list):
@@ -101,8 +103,12 @@ class Dict(Base):
         self.schema = schema
 
     def validate(self, value=None):
+
+        value = super().validate(value)
+        if value is None:
+            return
+
         try:
-            value = super().validate(value)
             validated_data = {}
             for key, field in self.schema.items():
                 if key not in value:
