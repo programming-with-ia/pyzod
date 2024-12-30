@@ -1,6 +1,15 @@
+from .helpers import ValidateResponse
+
+
 class ValidatorBase:
     def validate(self, value):
         raise NotImplementedError
+
+    def isValid(self, value) -> ValidateResponse:
+        try:
+            ValidateResponse(True, data=value)
+        except Exception as e:
+            ValidateResponse(False, e, value)
 
 
 # Specific Validators

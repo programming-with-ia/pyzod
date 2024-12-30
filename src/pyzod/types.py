@@ -1,5 +1,19 @@
-from .validators import *
+from . import validators as v
 from .getters import Getter
+import typing as t
+from .helpers import ValidateResponse, MessagesTypes, getUniqueObjects, getCN
+
+
+class CustomDict(dict):
+
+    def setValue(self, key, value):
+        # if value is None:
+        #     del self[key]
+        #     return
+        self[key] = value
+
+    def getValue(self, key):
+        return self.get(key, None)
 
 
 class Base:
@@ -8,10 +22,12 @@ class Base:
         self._required = False
         self._default = None
         self._onError = None
-        self.validators = []
+        self.validators: t.List[v.ValidatorBase] = []
+        self.messages = CustomDict()
 
-    def required(self):
+    def required(self, message="Value is required"):
         self._required = True
+        self.messages.setValue(MessagesTypes.Required, message)
         return self
 
     def isRequired(self):
@@ -42,12 +58,12 @@ class Base:
         try:
             if value is None:
                 if self._required:
-                    raise ValueError("Value is required")
+                    raise ValueError(self.messages.getValue(MessagesTypes.Required))
                 return self._default
 
             if not isinstance(value, self.type):
                 raise TypeError(
-                    f"Expected type {self.type}, got {type(value).__name__}"
+                    f"Expected type '{self.type}' for value '{value}', but got '{type(value).__name__}'"
                 )
 
             for validator in self.validators:
@@ -56,25 +72,54 @@ class Base:
             return value
 
         except (ValueError, TypeError) as e:
-            if self._onError:
+            if self._onError is not None:
                 return self._onError
             raise e
+
+    def isValid(self, value=None):
+
+        try:
+            self.validate(value)
+            return ValidateResponse(True, data=value)
+        except (ValueError, TypeError) as e:
+            return ValidateResponse(False, e, value)
 
     def add_validator(self, validator):
         self.validators.append(validator)
         return self
 
 
-class List(Base):
-    def __init__(self, schema):
+class LengthValidators:
+    def min(self, min_length):
+        self.add_validator(v.MinLength(min_length))
+        return self
+
+    def max(self, max_length):
+        self.add_validator(v.MaxLength(max_length))
+        return self
+
+    def length(self, length):
+        self.add_validator(v.Length(length))
+        return self
+
+
+class List(Base, LengthValidators):
+    def __init__(self, *schema):
         super().__init__()
         self.type = list
-        self.schema = schema
+        self.schema: t.Union[t.List["Base"], t.Tuple["Base"], "Base"] = None
+        self.setSchema(*schema)
 
     def validate(self, value=None):
         value = super().validate(value)
-        if value is None:
-            return
+
+        # # If the parent result indicates failure (False) or a warning,
+        # # or if the value is None (indicating the field is not required):
+        # # - This handles cases where the parent validation has already determined
+        # #   success/failure, and no further checks are needed here for a None value.
+        # # ...  or (value is None) means `superRes.success` is True even `value` is None
+        # if (superRes.success in [False, "warning"]) or (value is None):
+        #     return superRes
 
         try:
             if isinstance(self.schema, list):
@@ -84,6 +129,22 @@ class List(Base):
                     )
                 for item, sub_schema in zip(value, self.schema):
                     sub_schema.validate(item)
+
+            if isinstance(self.schema, tuple):
+                for item in value:
+                    isValid = False
+                    for validator in self.schema:
+                        try:
+                            validator.validate(item)
+                            isValid = True
+                            break
+                        except Exception as e:
+                            pass
+
+                    if not isValid:
+                        raise ValueError(
+                            f"value '{item}' in list, is not valid by these validators '{tuple(getCN(validator) for validator in self.schema)}'"
+                        )
             else:
                 for item in value:
                     self.schema.validate(item)
@@ -94,6 +155,15 @@ class List(Base):
             if self._onError:
                 return self._onError
             raise e
+
+    def str(self):
+        self.schema = Str()
+
+    def setSchema(self, *schema):
+        if len(schema) == 1:
+            schema = schema[0]
+        # self.schema = schema
+        self.schema = getUniqueObjects(schema)  # [str, int, str] -> [str, int]
 
 
 class Dict(Base):
@@ -142,49 +212,40 @@ class Dict(Base):
         return self
 
 
-class Str(Base):
+class Str(Base, LengthValidators):
     def __init__(self):
         super().__init__()
         self.type = str
 
-    def min(self, min_length):
-        self.add_validator(MinLength(min_length))
-        return self
 
-    def max(self, max_length):
-        self.add_validator(MaxLength(max_length))
-        return self
-
-    def length(self, length):
-        self.add_validator(Length(length))
-        return self
-
-
-class Number(Base):
-    def __init__(self):
-        super().__init__()
-        self.type = (int, float)  # Support for both int and float types
+class MinMaxValidators:
 
     def min(self, min_value):
-        self.add_validator(Min(min_value))
+        self.add_validator(v.Min(min_value))
         return self
 
     def max(self, max_value):
-        self.add_validator(Max(max_value))
+        self.add_validator(v.Max(max_value))
         return self
 
     def minmax(self, min_value, max_value):
-        self.add_validator(MinMax(min_value, max_value))
+        self.add_validator(v.MinMax(min_value, max_value))
         return self
+
+
+class Number(Base, MinMaxValidators):
+    def __init__(self):
+        super().__init__()
+        self.type = (int, float)  # Support for both int and float types
 
 
 class Int(Number):
     def __init__(self):
         super().__init__()
-        self.type = int  # Restrict to integers only
+        self.type = int
 
 
 class Float(Number):
     def __init__(self):
         super().__init__()
-        self.type = float  # Restrict to floats only
+        self.type = float
