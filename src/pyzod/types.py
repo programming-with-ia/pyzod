@@ -1,19 +1,7 @@
 from . import validators as v
 from .getters import Getter
 import typing as t
-from .helpers import ValidateResponse, MessagesTypes, getUniqueObjects, getCN
-
-
-class CustomDict(dict):
-
-    def setValue(self, key, value):
-        # if value is None:
-        #     del self[key]
-        #     return
-        self[key] = value
-
-    def getValue(self, key):
-        return self.get(key, None)
+from .helpers import ValidateResponse, MessagesTypes, getUniqueObjects, getCN, CustomDict
 
 
 class Base:
@@ -112,6 +100,10 @@ class List(Base, LengthValidators):
 
     def validate(self, value=None):
         value = super().validate(value)
+
+        if value is None or value == self._default: # not required and not provided
+            return value
+
         validatedList = []
 
         try:
@@ -171,17 +163,17 @@ class Dict(Base):
     def validate(self, value=None):
 
         value = super().validate(value)
-        if value is None:
-            return
+        if value is None or value == self._default:
+            return value
 
         try:
             validated_data = {}
             for key, field in self.schema.items():
                 if key not in value:
-                    if field._default is not None:
-                        validated_data[key] = field._default
-                    elif field._required:
+                    if field._required:
                         raise ValueError(f"Missing required field: {key}")
+                    elif field._default is not None:
+                        validated_data[key] = field._default
                 else:
                     validated_data[key] = field.validate(value[key])
 

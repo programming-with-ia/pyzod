@@ -5,6 +5,18 @@ import typing as t
 T = t.TypeVar("T")
 
 
+class CustomDict(dict):
+
+    def setValue(self, key, value):
+        # if value is None:
+        #     del self[key]
+        #     return
+        self[key] = value
+
+    def getValue(self, key):
+        return self.get(key, None)
+
+
 @dataclass
 class ValidateResponse(t.Generic[T]):
     success: bool | t.Literal["warning"]
