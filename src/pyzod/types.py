@@ -112,14 +112,7 @@ class List(Base, LengthValidators):
 
     def validate(self, value=None):
         value = super().validate(value)
-
-        # # If the parent result indicates failure (False) or a warning,
-        # # or if the value is None (indicating the field is not required):
-        # # - This handles cases where the parent validation has already determined
-        # #   success/failure, and no further checks are needed here for a None value.
-        # # ...  or (value is None) means `superRes.success` is True even `value` is None
-        # if (superRes.success in [False, "warning"]) or (value is None):
-        #     return superRes
+        validatedList = []
 
         try:
             if isinstance(self.schema, list):
@@ -128,15 +121,17 @@ class List(Base, LengthValidators):
                         f"Expected list of length {len(self.schema)}, got {len(value)}"
                     )
                 for item, sub_schema in zip(value, self.schema):
-                    sub_schema.validate(item)
+                    valid_item = sub_schema.validate(item)
+                    validatedList.append(valid_item)
 
             if isinstance(self.schema, tuple):
                 for item in value:
                     isValid = False
                     for validator in self.schema:
                         try:
-                            validator.validate(item)
+                            valid_item = validator.validate(item)
                             isValid = True
+                            validatedList.append(valid_item)
                             break
                         except Exception as e:
                             pass
@@ -145,11 +140,12 @@ class List(Base, LengthValidators):
                         raise ValueError(
                             f"value '{item}' in list, is not valid by these validators '{tuple(getCN(validator) for validator in self.schema)}'"
                         )
-            else:
+            else:  # for single type like: self.schema = z.Str()
                 for item in value:
-                    self.schema.validate(item)
+                    valid_item = self.schema.validate(item)
+                    validatedList.append(valid_item)
 
-            return value
+            return validatedList
 
         except ValueError as e:
             if self._onError:
